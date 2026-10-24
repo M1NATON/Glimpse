@@ -1,0 +1,61 @@
+{
+  "name": "glimpse",
+  "productName": "Glimpse",
+  "version": "0.1.0",
+  "description": "Google AI answers in a quick floating window, with follow-up questions.",
+  "license": "MIT",
+  "author": {
+    "name": "Glimpse contributors",
+    "email": "glimpse@users.noreply.github.com"
+  },
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder"
+  },
+  "devDependencies": {
+    "electron": "44.9.3",
+    "electron-builder": "26.18.0"
+  },
+  "build": {
+    "appId": "app.glimpse.desktop",
+    "productName": "Glimpse",
+    "files": [
+      "src/**/*",
+      "build/icon.png"
+    ],
+    "directories": {
+      "buildResources": "build",
+      "output": "dist"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Utility",
+      "icon": "build/icon.png",
+      "maintainer": "Glimpse contributors <glimpse@users.noreply.github.com>"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "build/icon.png"
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "category": "public.app-category.productivity",
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false
+    },
+    "publish": {
+      "provider": "github"
+    }
+  }
+}
