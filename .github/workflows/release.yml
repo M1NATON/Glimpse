@@ -9,8 +9,21 @@ permissions:
   contents: write
 
 jobs:
+  # One draft before the builds: three parallel electron-builder runs would each create their own.
+  draft:
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - run: gh release view "$TAG" || gh release create "$TAG" --draft --verify-tag --title "Glimpse ${TAG#v}" --notes ""
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+
   build:
     name: ${{ matrix.name }}
+    needs: draft
+    if: ${{ !cancelled() && needs.draft.result != 'failure' }}
     strategy:
       fail-fast: false
       matrix:
