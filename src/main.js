@@ -8,7 +8,6 @@ const { GoogleSession, aiUrl } = require("./google")
 const { Settings, History } = require("./store")
 
 const isMac = process.platform === "darwin"
-const isWindows = process.platform === "win32"
 const isLinux = process.platform === "linux"
 const COMPACT_HEIGHT = 68
 
@@ -74,8 +73,6 @@ function createWindow() {
     hasShadow: !isLinux,
     title: "Glimpse",
     backgroundColor: "#00000000",
-    ...(isMac ? { vibrancy: "hud", visualEffectState: "active" } : {}),
-    ...(isWindows ? { backgroundMaterial: "acrylic" } : {}),
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       sandbox: true,
@@ -168,9 +165,15 @@ function hide() {
   if (win?.isVisible()) win.hide()
 }
 
+// Each open from the shortcut starts a fresh chat; past chats stay in History.
 function toggle() {
-  if (win?.isVisible() && win.isFocused()) hide()
-  else show()
+  if (win?.isVisible() && win.isFocused()) return hide()
+  if (!win?.isVisible() && chat.messages.length) {
+    google.reset()
+    newChat()
+    sendChat()
+  }
+  show()
 }
 
 function openExternal(url) {
@@ -236,6 +239,7 @@ function wireGoogle() {
   google.on("captcha", () => {
     Object.assign(last(), { captcha: true })
     sendChat()
+    hide()
   })
   google.on("captchaSolved", () => {
     Object.assign(last(), { captcha: false })

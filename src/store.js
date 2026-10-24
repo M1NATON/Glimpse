@@ -14,7 +14,7 @@ const DEFAULT_SETTINGS = {
   theme: "glass",
   accent: "#4dd6c8",
   fontSize: 14,
-  opacity: 0.72,
+  opacity: 0.9,
   radius: 20,
   width: 720,
   height: 640,

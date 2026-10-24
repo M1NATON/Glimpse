@@ -48,10 +48,11 @@ pass the check once and the answer continues.
 - On Wayland the global shortcut goes through the desktop portal. If your desktop
   does not support it, bind any key in your window manager to run `glimpse`
   (a second launch toggles the window).
-- Hyprland users can get a borderless, blurred window with:
+- Hyprland users can get a borderless, blurred window that keeps focus while open
+  (with `follow_mouse` a mouse move would otherwise hide it) with:
 
   ```lua
-  o.window({ class = "^glimpse$", title = "^Glimpse$" }, { float = true, no_shadow = true, border_size = 0, rounding = 20 })
+  o.window({ class = "^glimpse$", title = "^Glimpse$" }, { float = true, no_shadow = true, border_size = 0, rounding = 20, stay_focused = true })
   ```
 
 ## Build from source
