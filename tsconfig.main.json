@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "module": "nodenext",
+    "lib": ["es2024"],
+    "types": ["node"],
+    "tsBuildInfoFile": "out/main.tsbuildinfo"
+  },
+  "include": ["src/main", "src/shared"]
+}

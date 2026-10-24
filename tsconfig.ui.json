@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "lib": ["es2024", "dom", "dom.iterable"],
+    "types": [],
+    "tsBuildInfoFile": "out/ui.tsbuildinfo"
+  },
+  "include": ["src/ui", "src/page", "src/shared"]
+}

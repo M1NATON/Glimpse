@@ -22,7 +22,13 @@ jobs:
           node-version: lts/*
           cache: npm
       - run: npm ci
+      - run: npm run build
+      - name: End-to-end tests
+        if: runner.os == 'Linux'
+        run: xvfb-run -a npx playwright test
       - name: Build and publish installers
+        # bash: PowerShell splits "-c.publish.repo=..." into a file path on Windows.
+        shell: bash
         run: npx electron-builder --publish ${{ startsWith(github.ref, 'refs/tags/') && 'always' || 'never' }} -c.extraMetadata.homepage=https://github.com/${{ github.repository }} -c.publish.owner=${{ github.repository_owner }} -c.publish.repo=${{ github.event.repository.name }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

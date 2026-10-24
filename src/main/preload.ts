@@ -1,12 +1,17 @@
-const { contextBridge, ipcRenderer } = require("electron")
+import { contextBridge, ipcRenderer } from "electron"
+import type { GlimpseApi } from "../shared/types"
 
-const listen = (channel) => (callback) => {
-  const handler = (_event, value) => callback(value)
-  ipcRenderer.on(channel, handler)
-  return () => ipcRenderer.removeListener(channel, handler)
-}
+const listen =
+  <T>(channel: string) =>
+  (callback: (value: T) => void) => {
+    const handler = (_event: unknown, value: T) => callback(value)
+    ipcRenderer.on(channel, handler)
+    return () => {
+      ipcRenderer.removeListener(channel, handler)
+    }
+  }
 
-contextBridge.exposeInMainWorld("glimpse", {
+const api: GlimpseApi = {
   init: () => ipcRenderer.invoke("init"),
   ask: (text) => ipcRenderer.send("ask", text),
   retry: () => ipcRenderer.send("retry"),
@@ -25,4 +30,6 @@ contextBridge.exposeInMainWorld("glimpse", {
   onChat: listen("chat"),
   onSettings: listen("settings"),
   onShown: listen("shown"),
-})
+}
+
+contextBridge.exposeInMainWorld("glimpse", api)

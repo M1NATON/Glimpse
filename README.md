@@ -59,20 +59,23 @@ pass the check once and the answer continues.
 
 ```bash
 npm install
-npm start          # run
+npm start          # build and run
+npm test           # end-to-end tests against the real app
 npm run dist       # build installers for the current system into dist/
 ```
+
+Written in TypeScript and compiled by `tsc` into `out/`; there is no bundler.
 
 Releases are built by GitHub Actions for all three systems when a `v*` tag is pushed.
 
 ## How it works
 
-`src/google.js` keeps a hidden Chromium window on Google's AI Mode page.
-`src/extract.js` runs inside that page and turns the answer into simple blocks
+`src/main/google.ts` keeps a hidden Chromium window on Google's AI Mode page.
+`src/page/extract.ts` runs inside that page and turns the answer into simple blocks
 (paragraphs, headings, list items, tables). The interface in `src/ui/` draws those
 blocks; Google's markup is never inserted as HTML.
 
-If Google changes its page and answers stop appearing, `src/extract.js` is the file to fix.
+If Google changes its page and answers stop appearing, `src/page/extract.ts` is the file to fix.
 
 ## Disclaimer
 

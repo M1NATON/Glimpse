@@ -8,20 +8,27 @@
     "name": "Glimpse contributors",
     "email": "glimpse@users.noreply.github.com"
   },
-  "main": "src/main.js",
+  "main": "out/main/main.js",
   "scripts": {
-    "start": "electron .",
-    "dist": "electron-builder"
+    "build": "tsc -b && node -e \"for (const f of ['index.html', 'style.css']) require('node:fs').cpSync('src/ui/' + f, 'out/ui/' + f)\"",
+    "start": "npm run build && electron .",
+    "dist": "npm run build && electron-builder",
+    "test": "npm run build && playwright test"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "@types/node": "^24.19.2",
     "electron": "44.9.3",
-    "electron-builder": "26.18.0"
+    "electron-builder": "26.18.0",
+    "typescript": "^7.0.2"
   },
   "build": {
     "appId": "app.glimpse.desktop",
     "productName": "Glimpse",
     "files": [
-      "src/**/*",
+      "out/**/*.js",
+      "out/ui/index.html",
+      "out/ui/style.css",
       "build/icon.png"
     ],
     "directories": {

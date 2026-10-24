@@ -1,18 +1,29 @@
-const { app, BrowserWindow, Menu, Tray, globalShortcut, ipcMain, nativeImage, screen, shell } = require("electron")
-const { execFile } = require("node:child_process")
-const crypto = require("node:crypto")
-const fs = require("node:fs")
-const os = require("node:os")
-const path = require("node:path")
-const { GoogleSession, aiUrl } = require("./google")
-const { Settings, History } = require("./store")
+import { BrowserWindow, Menu, Tray, app, globalShortcut, ipcMain, nativeImage, screen, shell } from "electron"
+import { execFile } from "node:child_process"
+import crypto from "node:crypto"
+import fs from "node:fs"
+import os from "node:os"
+import path from "node:path"
+import type { Chat, Message, Settings as SettingsValue, ShownSettings, View } from "../shared/types"
+import { GoogleSession, aiUrl } from "./google"
+import { History, Settings } from "./store"
 
 const isMac = process.platform === "darwin"
 const isLinux = process.platform === "linux"
 const COMPACT_HEIGHT = 68
+const ROOT = app.getAppPath()
 
 // Wayland has no global hotkeys for apps; Chromium asks the desktop portal instead.
 if (isLinux) app.commandLine.appendSwitch("enable-features", "GlobalShortcutsPortal")
+
+let win: BrowserWindow | null = null
+let tray: Tray | null = null
+let settings: Settings
+let history: History
+let expanded = false
+let blurTimer: NodeJS.Timeout | undefined
+let chat: Chat & { saved: boolean }
+const google = new GoogleSession()
 
 if (!app.requestSingleInstanceLock()) {
   app.quit()
@@ -20,15 +31,6 @@ if (!app.requestSingleInstanceLock()) {
   app.on("second-instance", () => toggle())
   app.whenReady().then(start)
 }
-
-let win = null
-let tray = null
-let settings = null
-let history = null
-let expanded = false
-let blurTimer = null
-let chat = null
-const google = new GoogleSession()
 
 function newChat() {
   chat = { id: crypto.randomUUID(), title: "", messages: [], saved: false }
@@ -58,7 +60,7 @@ function start() {
 
 function createWindow() {
   const s = settings.get()
-  win = new BrowserWindow({
+  const window = new BrowserWindow({
     width: s.width,
     height: COMPACT_HEIGHT,
     show: false,
@@ -80,31 +82,32 @@ function createWindow() {
       nodeIntegration: false,
     },
   })
-  win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
-  win.loadFile(path.join(__dirname, "ui", "index.html"))
-  win.webContents.once("did-finish-load", relaunchIfShrunk)
-  win.webContents.setWindowOpenHandler(({ url }) => {
+  win = window
+  window.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
+  window.loadFile(path.join(ROOT, "out", "ui", "index.html"))
+  window.webContents.once("did-finish-load", relaunchIfShrunk)
+  window.webContents.setWindowOpenHandler(({ url }) => {
     openExternal(url)
     return { action: "deny" }
   })
-  win.webContents.on("will-navigate", (event) => event.preventDefault())
+  window.webContents.on("will-navigate", (event) => event.preventDefault())
   // A short delay keeps a stray click outside from snapping the window shut.
-  win.on("blur", () => {
+  window.on("blur", () => {
     const s = settings.get()
-    if (!s.hideOnBlur || google.captcha || win.webContents.isDevToolsOpened()) return
+    if (!s.hideOnBlur || google.captcha || window.webContents.isDevToolsOpened()) return
     clearTimeout(blurTimer)
     blurTimer = setTimeout(() => {
-      if (!win.isFocused()) hide()
+      if (!window.isFocused()) hide()
     }, s.hideDelay)
   })
-  win.on("focus", () => clearTimeout(blurTimer))
+  window.on("focus", () => clearTimeout(blurTimer))
 }
 
 // Chromium on Wayland folds GNOME's text scaling into the page scale; below the
 // display scale it draws the page smaller than its own window. XWayland does not.
 async function relaunchIfShrunk() {
-  if (!isLinux || process.env.XDG_SESSION_TYPE !== "wayland" || process.argv.includes("--glimpse-x11")) return
-  const pageScale = await win.webContents.executeJavaScript("devicePixelRatio")
+  if (!win || !isLinux || process.env.XDG_SESSION_TYPE !== "wayland" || process.argv.includes("--glimpse-x11")) return
+  const pageScale: number = await win.webContents.executeJavaScript("devicePixelRatio")
   const displayScale = screen.getDisplayMatching(win.getBounds()).scaleFactor
   if (pageScale >= displayScale - 0.01) return
   app.relaunch({ args: [...process.argv.slice(1).filter((a) => !a.startsWith("--ozone-platform")), "--ozone-platform=x11", "--glimpse-x11"] })
@@ -112,12 +115,12 @@ async function relaunchIfShrunk() {
 }
 
 function createTray() {
-  const icon = nativeImage.createFromPath(path.join(__dirname, "..", "build", "icon.png")).resize({ width: 18, height: 18 })
+  const icon = nativeImage.createFromPath(path.join(ROOT, "build", "icon.png")).resize({ width: 18, height: 18 })
   tray = new Tray(icon)
   tray.setToolTip("Glimpse")
   tray.setContextMenu(
     Menu.buildFromTemplate([
-      { label: "Открыть Glimpse", click: show },
+      { label: "Открыть Glimpse", click: () => show() },
       { label: "Настройки", click: () => show("settings") },
       { label: "История", click: () => show("history") },
       { type: "separator" },
@@ -127,25 +130,25 @@ function createTray() {
   tray.on("click", toggle)
 }
 
-function placeWindow(height) {
+function placeWindow(height: number) {
+  if (!win) return
   const s = settings.get()
-  const cursor = screen.getCursorScreenPoint()
-  const area = screen.getDisplayNearestPoint(cursor).workArea
+  const area = screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea
   const top = Math.round(area.y + Math.max(24, (area.height - s.height) / 2))
   win.setBounds({ x: Math.round(area.x + (area.width - s.width) / 2), y: top, width: s.width, height })
 }
 
-function setExpanded(next) {
+function setExpanded(next: boolean) {
+  if (!win) return
   expanded = next
   const s = settings.get()
   const height = next ? s.height : COMPACT_HEIGHT
-  const bounds = win.getBounds()
-  win.setBounds({ ...bounds, width: s.width, height }, isMac)
+  win.setBounds({ ...win.getBounds(), width: s.width, height }, isMac)
   hyprResize(s.width, height)
 }
 
 // Hyprland ignores size requests from floating clients; ask it directly.
-function hyprResize(width, height) {
+function hyprResize(width: number, height: number) {
   if (!isLinux || !process.env.HYPRLAND_INSTANCE_SIGNATURE) return
   const selector = `pid:${process.pid}`
   execFile("hyprctl", ["dispatch", `hl.dsp.window.resize({ x = ${width}, y = ${height}, window = "${selector}" })`], (error) => {
@@ -153,12 +156,12 @@ function hyprResize(width, height) {
   })
 }
 
-function show(view) {
+function show(view?: View) {
   if (!win) return
   if (!win.isVisible()) placeWindow(expanded ? settings.get().height : COMPACT_HEIGHT)
   win.show()
   win.focus()
-  win.webContents.send("shown", view || null)
+  win.webContents.send("shown", view ?? null)
 }
 
 function hide() {
@@ -176,14 +179,14 @@ function toggle() {
   show()
 }
 
-function openExternal(url) {
+function openExternal(url: string) {
   try {
     const parsed = new URL(url)
     if (parsed.protocol === "https:" || parsed.protocol === "http:") shell.openExternal(parsed.toString())
   } catch {}
 }
 
-function registerShortcut(accelerator) {
+function registerShortcut(accelerator: string) {
   globalShortcut.unregisterAll()
   if (!accelerator) return true
   try {
@@ -193,7 +196,7 @@ function registerShortcut(accelerator) {
   }
 }
 
-function setLaunchAtLogin(enabled) {
+function setLaunchAtLogin(enabled: boolean) {
   if (!isLinux) {
     app.setLoginItemSettings({ openAtLogin: enabled, args: ["--hidden"] })
     return
@@ -205,73 +208,82 @@ function setLaunchAtLogin(enabled) {
   }
   const exec = process.env.APPIMAGE || process.execPath
   fs.mkdirSync(path.dirname(file), { recursive: true })
-  fs.writeFileSync(
-    file,
-    `[Desktop Entry]\nType=Application\nName=Glimpse\nExec="${exec}" --hidden\nX-GNOME-Autostart-enabled=true\n`,
-  )
+  fs.writeFileSync(file, `[Desktop Entry]\nType=Application\nName=Glimpse\nExec="${exec}" --hidden\nX-GNOME-Autostart-enabled=true\n`)
 }
 
-function applySettings(s) {
+function applySettings(s: SettingsValue): ShownSettings {
   const shortcutOk = registerShortcut(s.shortcut)
   setLaunchAtLogin(s.launchAtLogin)
+  const shown = { ...s, shortcutOk }
   if (win) {
-    win.webContents.send("settings", { ...s, shortcutOk })
+    win.webContents.send("settings", shown)
     if (win.getBounds().width !== s.width || expanded) setExpanded(expanded)
   }
-  return shortcutOk
+  return shown
+}
+
+function lastAnswer() {
+  return chat.messages[chat.messages.length - 1] as Extract<Message, { role: "ai" }>
 }
 
 function wireGoogle() {
-  const last = () => chat.messages[chat.messages.length - 1]
-  google.on("update", ({ blocks, sources }) => {
-    Object.assign(last(), { blocks, sources, pending: true })
+  google.on("update", (answer) => {
+    Object.assign(lastAnswer(), answer, { pending: true })
     sendChat()
   })
-  google.on("done", ({ blocks, sources }) => {
-    Object.assign(last(), { blocks, sources, pending: false })
+  google.on("done", (answer) => {
+    Object.assign(lastAnswer(), answer, { pending: false })
     persistChat()
     sendChat()
   })
   google.on("error", ({ code }) => {
-    Object.assign(last(), { error: code, pending: false })
+    Object.assign(lastAnswer(), { error: code, pending: false })
     sendChat()
   })
   google.on("captcha", () => {
-    Object.assign(last(), { captcha: true })
+    lastAnswer().captcha = true
     sendChat()
     hide()
   })
   google.on("captchaSolved", () => {
-    Object.assign(last(), { captcha: false })
+    lastAnswer().captcha = false
     sendChat()
     show()
   })
 }
 
-function ask(text) {
-  text = String(text || "").trim().slice(0, 2000)
+function pendingAnswer(): Message {
+  return { role: "ai", blocks: [], sources: [], pending: true }
+}
+
+function ask(value: unknown) {
+  const text = String(value ?? "").trim().slice(0, 2000)
   if (!text || google.busy) return
   if (!chat.title) chat.title = text.slice(0, 80)
-  chat.messages.push({ role: "user", text })
-  chat.messages.push({ role: "ai", blocks: [], sources: [], pending: true })
+  chat.messages.push({ role: "user", text }, pendingAnswer())
   sendChat()
   google.ask(text, settings.get().language)
+}
+
+function lastQuestion() {
+  const question = chat.messages.findLast((m) => m.role === "user")
+  return question?.role === "user" ? question.text : ""
 }
 
 ipcMain.handle("init", () => ({
   settings: { ...settings.get(), shortcutOk: true },
   chat: { ...chat, busy: google.busy },
   platform: process.platform,
-  homepage: require("../package.json").homepage || "",
+  homepage: JSON.parse(fs.readFileSync(path.join(ROOT, "package.json"), "utf8")).homepage ?? "",
 }))
 ipcMain.on("ask", (_event, text) => ask(text))
 ipcMain.on("retry", () => {
-  const question = [...chat.messages].reverse().find((m) => m.role === "user")
+  const question = lastQuestion()
   if (!question || google.busy) return
-  chat.messages.splice(chat.messages.length - 1, 1, { role: "ai", blocks: [], sources: [], pending: true })
+  chat.messages.splice(chat.messages.length - 1, 1, pendingAnswer())
   sendChat()
   google.reset()
-  google.ask(question.text, settings.get().language)
+  google.ask(question, settings.get().language)
 })
 ipcMain.on("new-chat", () => {
   google.reset()
@@ -280,34 +292,21 @@ ipcMain.on("new-chat", () => {
 })
 ipcMain.handle("history:list", () => history.list())
 ipcMain.on("history:open", (_event, id) => {
-  const saved = history.get(id)
+  const saved = history.get(String(id))
   if (!saved) return
   google.reset()
   chat = { id: saved.id, title: saved.title, messages: saved.messages, saved: true }
   sendChat()
 })
-ipcMain.handle("history:remove", (_event, id) => {
-  history.remove(id)
-  return history.list()
-})
-ipcMain.handle("history:clear", () => {
-  history.clear()
-  return []
-})
-ipcMain.handle("settings:set", (_event, patch) => {
-  const next = settings.set(patch || {})
-  const shortcutOk = applySettings(next)
-  return { ...next, shortcutOk }
-})
-ipcMain.handle("settings:reset", () => {
-  const next = settings.reset()
-  return { ...next, shortcutOk: applySettings(next) }
-})
+ipcMain.handle("history:remove", (_event, id) => history.remove(String(id)))
+ipcMain.handle("history:clear", () => history.clear())
+ipcMain.handle("settings:set", (_event, patch) => applySettings(settings.set(typeof patch === "object" && patch ? patch : {})))
+ipcMain.handle("settings:reset", () => applySettings(settings.reset()))
 ipcMain.on("expand", (_event, next) => setExpanded(Boolean(next)))
 ipcMain.on("hide", hide)
-ipcMain.on("open-external", (_event, url) => openExternal(url))
+ipcMain.on("open-external", (_event, url) => openExternal(String(url)))
 ipcMain.on("open-in-browser", (_event, text) => {
-  const question = text || [...chat.messages].reverse().find((m) => m.role === "user")?.text
+  const question = String(text || "") || lastQuestion()
   if (question) openExternal(aiUrl(question, settings.get().language))
   hide()
 })
@@ -320,4 +319,5 @@ app.on("will-quit", () => {
   globalShortcut.unregisterAll()
   google.destroy()
 })
-app.on("window-all-closed", (event) => event.preventDefault())
+// Hiding the last window must not quit: Glimpse lives in the tray.
+app.on("window-all-closed", () => {})
