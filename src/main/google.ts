@@ -41,6 +41,7 @@ export class GoogleSession extends EventEmitter<Events> {
   private stable = 0
   private startedAt = 0
   private question = ""
+  private withImage = false
   // Bumped by reset(): an ask still awaiting the page drops out when the chat it belonged to is gone.
   private generation = 0
 
@@ -108,6 +109,7 @@ export class GoogleSession extends EventEmitter<Events> {
     const current = () => generation === this.generation
     this.busy = true
     this.question = text
+    this.withImage = Boolean(image)
     this.lastKey = ""
     this.lastResult = null
     this.stable = 0
@@ -201,7 +203,9 @@ export class GoogleSession extends EventEmitter<Events> {
     if (key !== this.lastKey) {
       this.lastKey = key
       this.stable = 0
-      this.lastResult = { blocks: withoutEcho(safeParse(result.md), this.question), sources: result.sources }
+      // With an uploaded image Google shows that same image again in the answer; leave its pictures out.
+      const blocks = withoutEcho(safeParse(result.md), this.question).filter((block) => !this.withImage || block.k !== "images")
+      this.lastResult = { blocks, sources: result.sources }
       this.emit("update", this.lastResult)
     } else if (!result.busy && !result.expanding && ++this.stable >= STABLE_TICKS) {
       this.finish()
