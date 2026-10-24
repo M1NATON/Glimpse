@@ -29,7 +29,11 @@ jobs:
       - run: npm run build
       - name: End-to-end tests
         if: runner.os == 'Linux'
-        run: xvfb-run -a npx playwright test
+        # The second launch runs with Chromium's sandbox, which needs a setuid-root helper.
+        run: |
+          sudo chown root node_modules/electron/dist/chrome-sandbox
+          sudo chmod 4755 node_modules/electron/dist/chrome-sandbox
+          xvfb-run -a npx playwright test
       - name: Build and publish installers
         # bash: PowerShell splits "-c.publish.repo=..." into a file path on Windows.
         shell: bash
