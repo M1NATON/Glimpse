@@ -103,6 +103,9 @@ test("a broken settings file falls back to defaults", async () => {
 test("answers a real question", async () => {
   test.skip(!!process.env.CI, "Google shows a captcha to CI runners")
   await app.close()
+  // A fresh profile hits a captcha after many test runs; reuse the local Glimpse's Google cookies when there are some.
+  const cookies = path.join(os.homedir(), ".config", "Glimpse", "Partitions", "google")
+  if (fs.existsSync(cookies)) fs.cpSync(cookies, path.join(dataDir, "Partitions", "google"), { recursive: true })
   const child = spawn(require("electron") as unknown as string, [root, `--user-data-dir=${dataDir}`, "--force-device-scale-factor=1", "--remote-debugging-port=9339"])
   try {
     await expect.poll(() => fetch("http://127.0.0.1:9339/json/version").then((r) => r.ok, () => false)).toBe(true)
@@ -128,4 +131,60 @@ test("hands the captcha to the Google window", async () => {
   await expect.poll(isVisible).toBe(false)
   const googleShown = () => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().some((w) => w.title !== "Glimpse" && w.isVisible()))
   await expect.poll(googleShown).toBe(true)
+})
+
+test("a pasted image becomes an attachment that Backspace removes", async () => {
+  const png = fs.readFileSync(path.join(root, "build", "icon.png")).toString("base64")
+  await page.evaluate((data) => {
+    const bytes = Uint8Array.from(atob(data), (c) => c.charCodeAt(0))
+    const transfer = new DataTransfer()
+    transfer.items.add(new File([bytes], "icon.png", { type: "image/png" }))
+    window.dispatchEvent(new ClipboardEvent("paste", { clipboardData: transfer, bubbles: true, cancelable: true }))
+  }, png)
+  await expect(page.locator("#attachment img")).toBeVisible()
+  await expect(page.locator("#input")).toHaveAttribute("placeholder", "Ask about this image…")
+  await page.locator("#input").press("Backspace")
+  await expect(page.locator("#attachment")).toBeHidden()
+})
+
+test("answer pictures open in a modal that pages and closes on the backdrop", async () => {
+  const png = "data:image/png;base64," + fs.readFileSync(path.join(root, "build", "icon.png")).toString("base64")
+  const chat = {
+    id: "seed-2",
+    title: "Pictures",
+    updated: Date.now() + 1000,
+    messages: [
+      { role: "user", text: "Pictures" },
+      { role: "ai", pending: false, sources: [], blocks: [{ k: "p", t: "Two pictures" }, { k: "images", items: [{ src: png, alt: "one" }, { src: png, alt: "two" }] }] },
+    ],
+  }
+  await app.close()
+  fs.writeFileSync(path.join(dataDir, "history.json"), JSON.stringify({ chats: [chat, savedChat] }))
+  await launch()
+  await page.keyboard.press("Control+H")
+  await page.keyboard.press("Enter")
+  await page.locator(".gallery img").first().click()
+  await expect(page.locator(".viewer .caption")).toHaveText("one")
+  await page.keyboard.press("ArrowRight")
+  await expect(page.locator(".viewer .caption")).toHaveText("two")
+  await page.keyboard.press("Escape")
+  await expect(page.locator("#viewer")).toBeHidden()
+  await page.locator(".gallery img").first().click()
+  await page.locator("#viewer").click({ position: { x: 5, y: 5 } })
+  await expect(page.locator("#viewer")).toBeHidden()
+  await expect(page.locator("#input")).toBeFocused()
+})
+// Events from a question that was abandoned for a new chat must not touch the new one
+// (they used to crash the main process). Under Playwright Google answers with a captcha.
+test("a new chat started mid-question ignores the old question's events", async () => {
+  test.skip(!!process.env.CI, "needs the real Google")
+  const errors: string[] = []
+  app.process().stderr?.on("data", (chunk) => errors.push(String(chunk)))
+  await page.locator("#input").fill("what is 2+2")
+  await page.keyboard.press("Enter")
+  await page.keyboard.press("Control+N")
+  await page.waitForTimeout(8000)
+  await expect(page.locator(".message")).toHaveCount(0)
+  expect(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)).toBeGreaterThan(0)
+  expect(errors.join("")).not.toContain("TypeError")
 })

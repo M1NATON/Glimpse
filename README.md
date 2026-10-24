@@ -37,10 +37,12 @@ The bar grows into a chat when the answer arrives. Ask follow-ups in the same co
 
 - Spotlight-style bar that grows into a chat; every open starts a new chat
 - Follow-up questions in the same conversation
+- Ask about an image: paste it with `Ctrl+V` or drop it on the window
 - Answers keep their structure: headings, lists, tables, bold text, sources
 - Five themes (Glass, Midnight, Paper, Mono, Forest), accent color, opacity, corners, font, size
 - Chat history with search
 - Global shortcut, tray icon, start at login
+- Updates itself on Windows and Linux (AppImage); on macOS it tells you when a new version is out
 - English and Russian interface
 
 ## Install
@@ -55,6 +57,7 @@ Download the file for your system from [Releases](../../releases/latest):
 | Linux, any distribution | `Glimpse-x.y.z.AppImage`: `chmod +x`, then run |
 
 - **macOS:** the app is not notarized. The first time, right-click it and choose Open.
+  If macOS says the app "is damaged", run `xattr -cr /Applications/Glimpse.app` once.
 - **Windows:** SmartScreen may say "Unknown publisher". Choose More info → Run anyway.
 
 ## Use

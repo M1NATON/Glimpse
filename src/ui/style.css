@@ -168,6 +168,32 @@ kbd {
 .busy .composer .shimmer { opacity: 0.4; animation: shimmer 1.6s ease-in-out infinite; }
 @keyframes shimmer { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
 
+/* Attached image: a thumbnail at the start of the composer. */
+.attachment { position: relative; flex: none; -webkit-app-region: no-drag; }
+.attachment img { display: block; width: 40px; height: 40px; object-fit: cover; border-radius: var(--r-small); box-shadow: 0 0 0 1px var(--hair); }
+.attachment .remove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--ink);
+  color: rgb(var(--bg));
+  font-size: 13px;
+  line-height: 18px;
+  cursor: pointer;
+}
+.card.dropping { box-shadow: inset 0 0 0 2px var(--accent); }
+
+/* Update notice: one quiet line under the top bar. */
+.update { display: none; align-items: center; justify-content: space-between; gap: 12px; margin: 0 16px 4px; padding: 6px 6px 6px 14px; border-radius: var(--r-inner); background: var(--fill); font-size: var(--t-caption); color: var(--ink-2); }
+.expanded .update:not([hidden]) { display: flex; }
+.update .button { padding: 4px 12px; }
+.update-pill { -webkit-app-region: no-drag; padding: 3px 10px; border: 0; border-radius: 99px; background: var(--accent); color: #fff; font-size: var(--t-caption); font-weight: 500; cursor: pointer; }
+
 /* Conversation: each question is the title of its answer. */
 .messages { display: flex; flex-direction: column; gap: 16px; max-width: 72ch; margin: 0 auto; }
 .message { animation: rise 0.32s var(--ease); }
@@ -181,6 +207,7 @@ kbd {
   letter-spacing: -0.015em;
   user-select: text;
 }
+.question-image { display: block; max-width: 220px; max-height: 160px; margin-bottom: 12px; border-radius: var(--r-inner); box-shadow: 0 0 0 1px var(--hair); }
 .question ~ .question { margin-top: 20px; padding-top: 28px; border-top: 1px solid var(--hair); }
 
 .answer { display: flex; flex-direction: column; gap: 12px; user-select: text; }
@@ -191,6 +218,63 @@ kbd {
 .answer li { padding-left: 6px; }
 .answer li::marker { color: var(--ink-3); }
 .answer b { font-weight: 600; }
+.gallery { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 2px 0; }
+.gallery img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: var(--r-small); box-shadow: 0 0 0 1px var(--hair); background: var(--fill); }
+.gallery img:only-child { grid-column: span 2; }
+.gallery img, .question-image { cursor: zoom-in; transition: filter 0.15s; }
+.gallery img:hover, .question-image:hover { filter: brightness(1.08); }
+
+/* Image viewer: a modal over a dimmed backdrop; a click on the backdrop closes it.
+   no-drag: the composer below is a window drag region, which would swallow clicks. */
+.viewer {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 24px 76px;
+  border-radius: var(--radius);
+  background: rgb(0 0 0 / 0.55);
+  backdrop-filter: blur(6px);
+  cursor: zoom-out;
+  -webkit-app-region: no-drag;
+  animation: fade 0.15s var(--ease);
+}
+.viewer[hidden] { display: none; }
+@keyframes fade { from { opacity: 0; } }
+.viewer img {
+  min-height: 0;
+  height: 100%;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+  border-radius: var(--r-inner);
+  box-shadow: 0 12px 40px rgb(0 0 0 / 0.45);
+  cursor: default;
+}
+.viewer .tools {
+  position: absolute;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100% - 32px);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 4px 4px 14px;
+  border-radius: 99px;
+  background: rgb(var(--bg) / 0.92);
+  box-shadow: 0 0 0 1px var(--hair), 0 6px 20px rgb(0 0 0 / 0.3);
+  cursor: default;
+}
+.viewer .caption { min-width: 0; max-width: 260px; margin-right: 6px; font-size: var(--t-caption); color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.viewer .count { font-size: var(--t-caption); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.viewer .button { padding: 5px 12px; border-radius: 99px; }
+.viewer .icon { border-radius: 50%; }
+
 .answer table {
   border-collapse: collapse;
   width: 100%;

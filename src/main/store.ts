@@ -22,6 +22,16 @@ export const DEFAULT_SETTINGS: SettingsValue = {
   font: "system",
 }
 
+// The same limits the settings sliders use.
+const RANGES: Partial<Record<string, [number, number]>> = {
+  opacity: [0.3, 1],
+  radius: [0, 34],
+  fontSize: [12, 18],
+  width: [560, 1000],
+  height: [420, 900],
+  hideDelay: [0, 3000],
+}
+
 // A JSON file written atomically (write to a temp file, then rename), so a
 // crash mid-write never leaves a half-written file behind.
 class JsonFile<T> {
@@ -76,7 +86,10 @@ export class Settings {
   private apply(patch: Partial<SettingsValue>) {
     const target = this.value as unknown as Record<string, unknown>
     for (const [key, value] of Object.entries(patch ?? {})) {
-      if (key in DEFAULT_SETTINGS && typeof value === typeof DEFAULT_SETTINGS[key as keyof SettingsValue]) target[key] = value
+      if (!(key in DEFAULT_SETTINGS) || typeof value !== typeof DEFAULT_SETTINGS[key as keyof SettingsValue]) continue
+      const range = RANGES[key]
+      if (range && (typeof value !== "number" || !Number.isFinite(value))) continue
+      target[key] = range ? Math.min(range[1], Math.max(range[0], value as number)) : value
     }
   }
 }

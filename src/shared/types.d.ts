@@ -30,6 +30,7 @@ export type Block =
   | { k: "p" | "h"; t: string }
   | { k: "li"; t: string; n: number; d: number }
   | { k: "table"; rows: string[][]; head: boolean }
+  | { k: "images"; items: { src: string; alt: string }[] }
 
 export interface Source {
   title: string
@@ -42,7 +43,7 @@ export interface Answer {
 }
 
 export type Message =
-  | { role: "user"; text: string }
+  | { role: "user"; text: string; image?: string }
   | ({ role: "ai"; pending: boolean; error?: ErrorCode; captcha?: boolean } & Answer)
 
 export interface Chat {
@@ -72,11 +73,20 @@ export interface InitData {
   chat: ShownChat
   platform: string
   homepage: string
+  update: UpdateState | null
 }
+
+// An image for the question: `data` goes to Google, `thumb` is kept in the chat.
+export interface Attachment {
+  data: string
+  thumb: string
+}
+
+export type UpdateState = { state: "ready"; version: string } | { state: "available"; version: string; url: string }
 
 export interface GlimpseApi {
   init(): Promise<InitData>
-  ask(text: string): void
+  ask(text: string, image?: Attachment): void
   retry(): void
   newChat(): void
   listHistory(): Promise<ChatSummary[]>
@@ -93,6 +103,10 @@ export interface GlimpseApi {
   onChat(callback: (chat: ShownChat) => void): () => void
   onSettings(callback: (settings: ShownSettings) => void): () => void
   onShown(callback: (view: View | null) => void): () => void
+  onUpdate(callback: (update: UpdateState) => void): () => void
+  installUpdate(): void
+  copyImage(data: string): void
+  saveImage(data: string, name: string): Promise<boolean>
 }
 
 // Result of window.__askGoogle inside the Google page.

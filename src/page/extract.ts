@@ -5,6 +5,7 @@
 interface Window {
   __askGoogle(latest: number): unknown
   __askGoogleSend(text: string): number
+  __askGoogleSendImage(text: string, dataUrl: string): Promise<number>
 }
 
 window.__askGoogle = (latest) => {
@@ -108,6 +109,14 @@ window.__askGoogle = (latest) => {
   walk(root, 0)
   flush()
 
+  // Google embeds its answer's pictures as data URLs; keep a few, after the first paragraph.
+  const plain = (html: string) => new DOMParser().parseFromString(html, "text/html").body.textContent ?? ""
+  const images = [...root.querySelectorAll("img")]
+    .filter((i) => i.naturalWidth >= 150 && i.getBoundingClientRect().width > 40 && /^data:image\/(jpeg|png|webp);base64,/.test(i.currentSrc))
+    .slice(0, 4)
+    .map((i) => ({ src: i.currentSrc, alt: plain(i.alt).trim() }))
+  if (images.length && blocks.length) blocks.splice(1, 0, { k: "images", items: images })
+
   const byHref = new Map<string, string>()
   root.querySelectorAll<HTMLAnchorElement>("a[href][aria-label]").forEach((a) => {
     if (/^https:\/\/(support|policies|accounts)\.google\./.test(a.href)) return
@@ -132,6 +141,31 @@ window.__askGoogleSend = (text) => {
   box.focus()
   Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set?.call(box, text)
   box.dispatchEvent(new Event("input", { bubbles: true }))
-  box.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", keyCode: 13, bubbles: true }))
+  // The send button works on every AI Mode page; Enter alone does not on the empty start page.
+  const send = [...document.querySelectorAll<HTMLElement>("button[aria-label]")].find(
+    (b) => /^(Отправить|Send)/.test(b.getAttribute("aria-label") ?? "") && b.getClientRects().length > 0,
+  )
+  if (send) send.click()
+  else box.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", keyCode: 13, bubbles: true }))
   return before
+}
+
+// Pastes an image into the AI Mode box the way Ctrl+V does, waits until Google shows
+// it as an attachment, then sends the text with it. Returns the turn count before sending.
+window.__askGoogleSendImage = async (text, dataUrl) => {
+  const box = [...document.querySelectorAll("textarea")].find((t) => t.getClientRects().length > 0)
+  if (!box) return -1
+  const name = "glimpse-image." + (dataUrl.slice(11, dataUrl.indexOf(";")) || "png")
+  // Decoded by hand: Google's content policy may not allow fetching data: URLs.
+  const bytes = Uint8Array.from(atob(dataUrl.slice(dataUrl.indexOf(",") + 1)), (c) => c.charCodeAt(0))
+  const file = new File([bytes], name, { type: dataUrl.slice(5, dataUrl.indexOf(";")) })
+  const transfer = new DataTransfer()
+  transfer.items.add(file)
+  box.focus()
+  box.dispatchEvent(new ClipboardEvent("paste", { clipboardData: transfer, bubbles: true, cancelable: true }))
+  for (let waited = 0; !document.querySelector(`[aria-label="${name}"]`); waited += 200) {
+    if (waited > 10000) return -1
+    await new Promise((resolve) => setTimeout(resolve, 200))
+  }
+  return window.__askGoogleSend(text)
 }

@@ -49,12 +49,20 @@ jobs:
           sudo chown root node_modules/electron/dist/chrome-sandbox
           sudo chmod 4755 node_modules/electron/dist/chrome-sandbox
           xvfb-run -a npx playwright test
-      - name: Build and publish installers
-        # bash: PowerShell splits "-c.publish.repo=..." into a file path on Windows.
+      - name: Build installers
+        # bash: PowerShell splits "-c.extraMetadata.homepage=..." into a file path on Windows.
         shell: bash
-        run: npx electron-builder --publish ${{ startsWith(github.ref, 'refs/tags/') && 'always' || 'never' }} -c.extraMetadata.homepage=https://github.com/${{ github.repository }} -c.publish.owner=${{ github.repository_owner }} -c.publish.repo=${{ github.event.repository.name }}
+        run: npx electron-builder --publish never -c.extraMetadata.homepage=https://github.com/${{ github.repository }}
+      # Only the installers go up: the app updates from the release itself, using the checksums GitHub lists.
+      - name: Upload installers to the draft release
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          shopt -s nullglob
+          gh release upload "$GITHUB_REF_NAME" dist/*.exe dist/*.dmg dist/*.AppImage --clobber
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
       - uses: actions/upload-artifact@v7
         if: ${{ !startsWith(github.ref, 'refs/tags/') }}
         with:

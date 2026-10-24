@@ -24,6 +24,7 @@
         </button>
       </header>
 
+      <div class="update" id="update" hidden></div>
       <div class="views">
         <section class="view on" id="view-chat"><div class="messages" id="messages"></div></section>
         <section class="view" id="view-history">
@@ -33,9 +34,11 @@
         <section class="view" id="view-settings"></section>
       </div>
 
+      <div class="viewer" id="viewer" hidden></div>
       <footer class="composer">
         <div class="shimmer"></div>
         <svg class="mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
+        <div class="attachment" id="attachment" hidden></div>
         <input id="input" autocomplete="off" spellcheck="false" />
         <span class="hint" id="hint"></span>
       </footer>

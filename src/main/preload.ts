@@ -13,7 +13,7 @@ const listen =
 
 const api: GlimpseApi = {
   init: () => ipcRenderer.invoke("init"),
-  ask: (text) => ipcRenderer.send("ask", text),
+  ask: (text, image) => ipcRenderer.send("ask", text, image),
   retry: () => ipcRenderer.send("retry"),
   newChat: () => ipcRenderer.send("new-chat"),
   listHistory: () => ipcRenderer.invoke("history:list"),
@@ -30,6 +30,10 @@ const api: GlimpseApi = {
   onChat: listen("chat"),
   onSettings: listen("settings"),
   onShown: listen("shown"),
+  onUpdate: listen("update"),
+  installUpdate: () => ipcRenderer.send("install-update"),
+  copyImage: (data) => ipcRenderer.send("image:copy", data),
+  saveImage: (data, name) => ipcRenderer.invoke("image:save", data, name),
 }
 
 contextBridge.exposeInMainWorld("glimpse", api)

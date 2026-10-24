@@ -12,7 +12,7 @@ const TIMEOUT_MS = 60000
 export function aiUrl(query: string, language: string) {
   const url = new URL("https://www.google.com/search")
   url.searchParams.set("udm", "50")
-  url.searchParams.set("q", query)
+  if (query) url.searchParams.set("q", query)
   if (language && language !== "auto") url.searchParams.set("hl", language)
   return url.toString()
 }
@@ -40,6 +40,9 @@ export class GoogleSession extends EventEmitter<Events> {
   private lastResult: Answer | null = null
   private stable = 0
   private startedAt = 0
+  private question = ""
+  // Bumped by reset(): an ask still awaiting the page drops out when the chat it belonged to is gone.
+  private generation = 0
 
   private ensureWindow() {
     if (this.win && !this.win.isDestroyed()) return this.win
@@ -47,6 +50,7 @@ export class GoogleSession extends EventEmitter<Events> {
     const google = session.fromPartition("persist:google")
     google.setUserAgent(app.userAgentFallback.replace(/ (Electron|glimpse|Glimpse)\/\S+/g, ""))
     google.setPermissionRequestHandler((_contents, _permission, callback) => callback(false))
+    google.on("will-download", (event) => event.preventDefault())
     const win = new BrowserWindow({
       show: false,
       width: 1100,
@@ -91,28 +95,57 @@ export class GoogleSession extends EventEmitter<Events> {
 
   reset() {
     this.stop()
+    this.generation++
     this.started = false
     this.busy = false
+    this.captcha = false
   }
 
-  async ask(text: string, language: string) {
+  async ask(text: string, language: string, image?: string) {
     this.language = language || this.language
     const win = this.ensureWindow()
+    const generation = ++this.generation
+    const current = () => generation === this.generation
     this.busy = true
+    this.question = text
     this.lastKey = ""
     this.lastResult = null
     this.stable = 0
     this.startedAt = Date.now()
     this.awaitTurns = 1
     let before = -1
-    if (this.started) {
-      before = await win.webContents.executeJavaScript(`window.__askGoogleSend(${JSON.stringify(text)})`).catch(() => -1)
+    if (image) {
+      // An image goes in through the page's own box, so a new chat starts on the empty AI Mode page.
+      if (!this.started) await win.loadURL(aiUrl("", this.language)).catch(() => {})
+      if (!current()) return
+      before = await win.webContents.executeJavaScript(`window.__askGoogleSendImage(${JSON.stringify(text)}, ${JSON.stringify(image)})`).catch(() => -1)
+      if (!current()) return
+      if (before < 0) return this.fail("nobox")
+      this.resendWhileUploading(text, before, current)
+    } else {
+      if (this.started) before = await win.webContents.executeJavaScript(`window.__askGoogleSend(${JSON.stringify(text)})`).catch(() => -1)
+      if (!current()) return
+      // No follow-up box (first question, or the page changed): start over with this question.
+      if (before < 0) win.loadURL(aiUrl(text, this.language))
     }
-    // No follow-up box (first question, or the page changed): start over with this question.
-    if (before < 0) win.loadURL(aiUrl(text, this.language))
-    else this.awaitTurns = before + 1
+    if (before >= 0) this.awaitTurns = before + 1
     this.started = true
     this.startPolling()
+  }
+
+  // Google ignores Send while an image is still uploading: press it again, once a second,
+  // only while no new turn has appeared and the question is still in the box.
+  private async resendWhileUploading(text: string, before: number, current: () => boolean) {
+    for (let i = 0; i < 15 && current(); i++) {
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+      const waiting = await this.win?.webContents
+        .executeJavaScript(
+          `document.querySelectorAll('[data-scope-id="turn"]').length <= ${before} && [...document.querySelectorAll("textarea")].some((t) => t.getClientRects().length && t.value)`,
+        )
+        .catch(() => false)
+      if (!waiting || !current()) return
+      await this.win?.webContents.executeJavaScript(`window.__askGoogleSend(${JSON.stringify(text)})`).catch(() => {})
+    }
   }
 
   showPage() {
@@ -168,7 +201,7 @@ export class GoogleSession extends EventEmitter<Events> {
     if (key !== this.lastKey) {
       this.lastKey = key
       this.stable = 0
-      this.lastResult = { blocks: safeParse(result.md), sources: result.sources }
+      this.lastResult = { blocks: withoutEcho(safeParse(result.md), this.question), sources: result.sources }
       this.emit("update", this.lastResult)
     } else if (!result.busy && !result.expanding && ++this.stable >= STABLE_TICKS) {
       this.finish()
@@ -189,6 +222,13 @@ export class GoogleSession extends EventEmitter<Events> {
     this.lastResult = null
     this.emit("error", { code, detail })
   }
+}
+
+// With an image Google repeats the question as the first paragraph of the answer.
+function withoutEcho(blocks: Block[], question: string) {
+  const first = blocks[0]
+  const text = first?.k === "p" ? first.t.replace(/<\/?[bi]>/g, "").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">") : ""
+  return question && text.trim() === question.trim() ? blocks.slice(1) : blocks
 }
 
 function safeParse(json: string): Block[] {

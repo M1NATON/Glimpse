@@ -49,6 +49,20 @@ const en = {
   about: "About",
   source: "Source code",
   hintKeys: [["↵", "ask"], ["esc", "hide"]] as [string, string][],
+  image: "Image",
+  removeImage: "Remove image",
+  askAboutImage: "Ask about this image…",
+  updateReady: (v: string) => `Glimpse ${v} is ready`,
+  updateAvailable: (v: string) => `Glimpse ${v} is available`,
+  restart: "Restart",
+  updateNow: "Update",
+  copy: "Copy",
+  copied: "Copied",
+  save: "Save",
+  saved: "Saved",
+  previous: "Previous",
+  next: "Next",
+  download: "Download",
 }
 
 export type Strings = typeof en
@@ -104,6 +118,20 @@ const ru: Strings = {
   about: "О программе",
   source: "Исходный код",
   hintKeys: [["↵", "спросить"], ["esc", "скрыть"]],
+  image: "Картинка",
+  removeImage: "Убрать картинку",
+  askAboutImage: "Спросите про картинку…",
+  updateReady: (v: string) => `Glimpse ${v} готов к установке`,
+  updateAvailable: (v: string) => `Вышел Glimpse ${v}`,
+  restart: "Перезапустить",
+  updateNow: "Обновить",
+  copy: "Копировать",
+  copied: "Скопировано",
+  save: "Сохранить",
+  saved: "Сохранено",
+  previous: "Назад",
+  next: "Дальше",
+  download: "Скачать",
 }
 
 export function languageOf(code: string) {

@@ -1,17 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#1f2a44"/>
-      <stop offset="1" stop-color="#0f1424"/>
-    </linearGradient>
-    <linearGradient id="lens" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#7cf0e2"/>
-      <stop offset="1" stop-color="#38b2d8"/>
-    </linearGradient>
-  </defs>
-  <rect x="24" y="24" width="464" height="464" rx="112" fill="url(#bg)"/>
-  <rect x="24.5" y="24.5" width="463" height="463" rx="111.5" fill="none" stroke="#ffffff" stroke-opacity="0.08"/>
-  <circle cx="226" cy="226" r="104" fill="none" stroke="url(#lens)" stroke-width="40"/>
-  <path d="M302 302l86 86" stroke="url(#lens)" stroke-width="44" stroke-linecap="round"/>
-  <circle cx="190" cy="190" r="22" fill="#ffffff" fill-opacity="0.85"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><defs><linearGradient id="p" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#34353b"/><stop offset="1" stop-color="#1c1d21"/></linearGradient><filter id="s" x="-20%" y="-20%" width="140%" height="160%"><feDropShadow dx="0" dy="18" stdDeviation="22" flood-color="#000" flood-opacity="0.45"/></filter><clipPath id="lens"><circle cx="452" cy="452" r="168"/></clipPath></defs><rect x="100" y="100" width="824" height="824" rx="186" fill="url(#p)"/><rect x="101" y="101" width="822" height="822" rx="185" fill="none" stroke="#fff" stroke-opacity="0.08" stroke-width="2"/>
+<g filter="url(#s)"><rect x="176" y="382" width="672" height="260" rx="130" fill="#f4f4f5"/></g>
+<path d="M346 446 C 392 446 422 476 436 512 C 422 548 392 578 346 578 C 300 578 270 548 256 512 C 270 476 300 446 346 446 Z" fill="#1c1d21"/>
+<circle cx="346" cy="512" r="34" fill="#0a84ff"/>
+<circle cx="358" cy="500" r="9" fill="#fff"/>
+<rect x="496" y="482" width="234" height="60" rx="30" fill="#0a84ff"/>
 </svg>

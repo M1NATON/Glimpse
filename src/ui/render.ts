@@ -39,6 +39,17 @@ export function renderBlocks(blocks: Block[]) {
         root.appendChild(list)
       }
       list.appendChild(inline(el("li"), block.t))
+    } else if (block.k === "images") {
+      const gallery = el("div", "gallery")
+      for (const item of block.items) {
+        if (!/^data:image\/(jpeg|png|webp);base64,/.test(item.src)) continue
+        const image = el("img")
+        image.src = item.src
+        image.alt = item.alt
+        image.title = item.alt
+        gallery.appendChild(image)
+      }
+      if (gallery.children.length) root.appendChild(gallery)
     } else if (block.k === "table") {
       const table = el("table")
       block.rows.forEach((row, r) => {
