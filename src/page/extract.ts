@@ -36,7 +36,15 @@ window.__askGoogle = (latest) => {
     return role === "button" && getComputedStyle(n).display !== "inline"
   }
   const esc = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-  const tidy = (h: string) => h.replace(/\s+/g, " ").replace(/ +([.,;:!?»)])/g, "$1").replace(/([«(]) +/g, "$1").trim()
+  // Bold and italic are wrapped in spaces; drop the ones that end up before punctuation.
+  const tidy = (h: string) =>
+    h
+      .replace(/\s+/g, " ")
+      .replace(/ +([.,;:!?»)])/g, "$1")
+      .replace(/(<\/[bi]>) +([.,;:!?»)]|—(?! ))/g, "$1$2")
+      .replace(/ +(<[bi]>[.,;:!?»)])/g, "$1")
+      .replace(/([«(]) +/g, "$1")
+      .trim()
   const isBold = (tag: string) => tag === "STRONG" || tag === "B"
   const isItalic = (tag: string) => tag === "EM" || tag === "I"
   const wrap = (tag: string, inner: string) => (isBold(tag) ? ` <b>${inner}</b> ` : ` <i>${inner}</i> `)

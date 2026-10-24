@@ -42,9 +42,15 @@ function updateChrome() {
     api.expand(expanded)
   }
   card.classList.toggle("busy", chat.busy)
-  $("title").textContent = view === "history" ? t.history : view === "settings" ? t.settings : chat.title
+  $("title").textContent = view === "history" ? t.history : view === "settings" ? t.settings : ""
   input.placeholder = chat.messages.length ? t.followUp : t.ask
-  $("hint").textContent = expanded || input.value ? "" : t.hintKeys
+  $("hint").replaceChildren(
+    ...(expanded || input.value ? [] : t.hintKeys.map(([key, label]) => {
+      const hint = el("span")
+      hint.append(el("kbd", "", key), label)
+      return hint
+    })),
+  )
 }
 
 // ---------- chat ----------
@@ -61,7 +67,7 @@ function notice(text: string, ...buttons: [string, string, () => void][]) {
 }
 
 function messageNode(message: Message) {
-  if (message.role === "user") return el("div", "message question", message.text)
+  if (message.role === "user") return el("h2", "message question", message.text)
   const node = el("div", "message")
   if (message.blocks.length) node.appendChild(renderBlocks(message.blocks))
   if (message.captcha) {

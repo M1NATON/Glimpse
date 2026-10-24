@@ -21,13 +21,13 @@ const en = {
   },
   look: "Look",
   theme: "Theme",
-  themes: { glass: "Glass", midnight: "Midnight", paper: "Paper", mono: "Mono", forest: "Forest" },
+  themes: { glass: "Graphite", midnight: "Midnight", paper: "Paper", mono: "Mono", forest: "Forest" },
   accent: "Accent",
   opacity: "Opacity",
   radius: "Corners",
   fontSize: "Text size",
   font: "Font",
-  fonts: { system: "System", mono: "Monospace", serif: "Serif" },
+  fonts: { system: "Geist", mono: "Monospace", serif: "Serif" },
   width: "Width",
   height: "Height",
   behavior: "Behavior",
@@ -48,7 +48,7 @@ const en = {
   resetSettings: "Reset settings",
   about: "About",
   source: "Source code",
-  hintKeys: "↵ ask · esc hide",
+  hintKeys: [["↵", "ask"], ["esc", "hide"]] as [string, string][],
 }
 
 export type Strings = typeof en
@@ -76,13 +76,13 @@ const ru: Strings = {
   },
   look: "Вид",
   theme: "Тема",
-  themes: { glass: "Стекло", midnight: "Полночь", paper: "Бумага", mono: "Моно", forest: "Лес" },
+  themes: { glass: "Графит", midnight: "Полночь", paper: "Бумага", mono: "Моно", forest: "Лес" },
   accent: "Акцент",
   opacity: "Прозрачность",
   radius: "Скругление",
   fontSize: "Размер текста",
   font: "Шрифт",
-  fonts: { system: "Системный", mono: "Моноширинный", serif: "С засечками" },
+  fonts: { system: "Geist", mono: "Моноширинный", serif: "С засечками" },
   width: "Ширина",
   height: "Высота",
   behavior: "Поведение",
@@ -103,7 +103,7 @@ const ru: Strings = {
   resetSettings: "Сбросить настройки",
   about: "О программе",
   source: "Исходный код",
-  hintKeys: "↵ спросить · esc скрыть",
+  hintKeys: [["↵", "спросить"], ["esc", "скрыть"]],
 }
 
 export function languageOf(code: string) {

@@ -85,7 +85,7 @@ function createWindow() {
   win = window
   window.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
   window.loadFile(path.join(ROOT, "out", "ui", "index.html"))
-  window.webContents.once("did-finish-load", relaunchIfShrunk)
+  window.webContents.once("did-finish-load", fitPageScale)
   window.webContents.setWindowOpenHandler(({ url }) => {
     openExternal(url)
     return { action: "deny" }
@@ -100,7 +100,11 @@ function createWindow() {
       if (!window.isFocused()) hide()
     }, s.hideDelay)
   })
-  window.on("focus", () => clearTimeout(blurTimer))
+  // Focus means the compositor has mapped the window, so it can take the corners.
+  window.on("focus", () => {
+    clearTimeout(blurTimer)
+    hyprRounding()
+  })
   // Closing from the window manager only hides it: the app lives on in the tray.
   window.on("close", (event) => {
     if (google.quitting) return
@@ -109,14 +113,15 @@ function createWindow() {
   })
 }
 
-// Chromium on Wayland folds GNOME's text scaling into the page scale; below the
-// display scale it draws the page smaller than its own window. XWayland does not.
-async function relaunchIfShrunk() {
-  if (!win || !isLinux || process.env.XDG_SESSION_TYPE !== "wayland" || process.argv.includes("--glimpse-x11")) return
+// Chromium on Wayland folds GNOME's text scaling into the device scale, so the page
+// draws smaller than its own window. Relaunch once with the display's real scale;
+// XWayland would avoid this too, but it loses keyboard focus when the window reopens.
+async function fitPageScale() {
+  if (!win || !isLinux || app.commandLine.hasSwitch("force-device-scale-factor")) return
   const pageScale: number = await win.webContents.executeJavaScript("devicePixelRatio")
   const displayScale = screen.getDisplayMatching(win.getBounds()).scaleFactor
-  if (pageScale >= displayScale - 0.01) return
-  app.relaunch({ args: [...process.argv.slice(1).filter((a) => !a.startsWith("--ozone-platform")), "--ozone-platform=x11", "--glimpse-x11"] })
+  if (Math.abs(pageScale - displayScale) < 0.01) return
+  app.relaunch({ args: [...process.argv.slice(1), `--force-device-scale-factor=${displayScale}`] })
   app.exit(0)
 }
 
@@ -153,12 +158,24 @@ function setExpanded(next: boolean) {
   hyprResize(s.width, height)
 }
 
-// Hyprland ignores size requests from floating clients; ask it directly.
+// Hyprland ignores size requests from floating clients and rounds and blurs the
+// window by its own rules; tell it the window's real size and corners.
 function hyprResize(width: number, height: number) {
+  const window = `pid:${process.pid}`
+  hyprDispatch(`hl.dsp.window.resize({ x = ${width}, y = ${height}, window = "${window}" })`, ["resizewindowpixel", `exact ${width} ${height},${window}`])
+}
+
+function hyprRounding() {
+  const window = `pid:${process.pid}`
+  const radius = settings.get().radius
+  hyprDispatch(`hl.dsp.window.set_prop({ window = "${window}", prop = "rounding", value = "${radius}" })`, ["setprop", `${window} rounding ${radius}`])
+}
+
+// Lua-configured Hyprland takes hl.dsp calls; older configs take the classic dispatchers.
+function hyprDispatch(lua: string, classic: string[]) {
   if (!isLinux || !process.env.HYPRLAND_INSTANCE_SIGNATURE) return
-  const selector = `pid:${process.pid}`
-  execFile("hyprctl", ["dispatch", `hl.dsp.window.resize({ x = ${width}, y = ${height}, window = "${selector}" })`], (error) => {
-    if (error) execFile("hyprctl", ["dispatch", "resizewindowpixel", `exact ${width} ${height},${selector}`], () => {})
+  execFile("hyprctl", ["dispatch", lua], (error, stdout) => {
+    if (error || !stdout.startsWith("ok")) execFile("hyprctl", ["dispatch", ...classic], () => {})
   })
 }
 
@@ -224,6 +241,7 @@ function applySettings(s: SettingsValue): ShownSettings {
   if (win) {
     win.webContents.send("settings", shown)
     if (win.getBounds().width !== s.width || expanded) setExpanded(expanded)
+    hyprRounding()
   }
   return shown
 }

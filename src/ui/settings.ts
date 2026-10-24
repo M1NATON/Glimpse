@@ -12,13 +12,13 @@ export interface SettingsContext {
 }
 
 const THEMES: Record<Theme, [string, string]> = {
-  glass: ["rgb(22 28 44)", "rgb(232 236 245)"],
+  glass: ["rgb(30 30 33)", "rgb(236 236 238)"],
   midnight: ["rgb(12 13 18)", "rgb(236 237 242)"],
   paper: ["rgb(250 249 246)", "rgb(28 30 36)"],
   mono: ["rgb(0 0 0)", "rgb(255 255 255)"],
   forest: ["rgb(18 30 26)", "rgb(226 238 230)"],
 }
-const ACCENTS = ["#4dd6c8", "#5b9dff", "#a78bfa", "#f472b6", "#fb923c", "#4ade80"]
+const ACCENTS = ["#0a84ff", "#8e8e93", "#bf5af2", "#ff375f", "#ff9f0a", "#30d158"]
 const LANGUAGES = { en: "English", ru: "Русский", uk: "Українська", de: "Deutsch", fr: "Français", es: "Español", pt: "Português", it: "Italiano", pl: "Polski", tr: "Türkçe", ja: "日本語", "zh-CN": "中文" }
 const NAMED_KEYS: Record<string, string> = { Space: "Space", Enter: "Enter", Tab: "Tab", Backquote: "`", Minus: "-", Equal: "=", Comma: ",", Period: ".", Slash: "/", Semicolon: ";", Quote: "'", BracketLeft: "[", BracketRight: "]", Backslash: "\\" }
 
@@ -47,10 +47,13 @@ function accelerator(event: KeyboardEvent, platform: string) {
   return [...parts, key].join("+")
 }
 
-function prettyShortcut(value: string, platform: string) {
-  if (!value) return "—"
-  if (platform !== "darwin") return value.replace(/Control/g, "Ctrl").replace(/\+/g, " + ")
-  return value.replace("Command", "⌘").replace("Control", "⌃").replace("Alt", "⌥").replace("Shift", "⇧").replace(/\+/g, "")
+const MAC_KEYS: Record<string, string> = { Command: "⌘", Control: "⌃", Alt: "⌥", Shift: "⇧" }
+
+// Shows an accelerator as key caps: "Control+Space" → [Ctrl] [Space].
+function showShortcut(button: HTMLElement, value: string, platform: string) {
+  if (!value) return button.replaceChildren("—")
+  const keys = value.split("+").map((key) => (platform === "darwin" ? MAC_KEYS[key] ?? key : key.replace("Control", "Ctrl")))
+  button.replaceChildren(...keys.map((key) => el("kbd", "", key)))
 }
 
 type NumberKey = { [K in keyof Settings]: Settings[K] extends number ? K : never }[keyof Settings]
@@ -61,7 +64,12 @@ export function buildSettings(container: HTMLElement, context: SettingsContext, 
   const s = context.settings
   container.replaceChildren()
 
-  const section = (title: string) => container.appendChild(el("div", "section")).appendChild(el("h4", "", title)).parentElement!
+  const section = (title: string) => {
+    const node = container.appendChild(el("div", "section"))
+    node.appendChild(el("h4", "", title))
+    return node
+  }
+  const group = (parent: HTMLElement) => parent.appendChild(el("div", "group"))
   const row = (parent: HTMLElement, label: string, control: HTMLElement, note?: string) => {
     const text = el("label", "", label)
     if (note) text.appendChild(el("span", "note", note))
@@ -71,7 +79,10 @@ export function buildSettings(container: HTMLElement, context: SettingsContext, 
     const wrap = el("div", "swatches")
     const value = el("span", "value", format(s[key]))
     const input = Object.assign(el("input"), { type: "range", min, max, step, value: String(s[key]) })
+    const fill = () => input.style.setProperty("--p", ((Number(input.value) - min) / (max - min)) * 100 + "%")
+    fill()
     input.addEventListener("input", () => {
+      fill()
       value.textContent = format(Number(input.value))
       update({ [key]: Number(input.value) }, true)
     })
@@ -109,6 +120,7 @@ export function buildSettings(container: HTMLElement, context: SettingsContext, 
     themes.appendChild(card)
   }
   look.appendChild(themes)
+  const lookRows = group(look)
 
   const swatches = el("div", "swatches")
   for (const color of ACCENTS) {
@@ -122,16 +134,17 @@ export function buildSettings(container: HTMLElement, context: SettingsContext, 
   picker.addEventListener("input", () => update({ accent: picker.value }, true))
   picker.addEventListener("change", () => update({ accent: picker.value }))
   swatches.appendChild(picker)
-  row(look, t.accent, swatches)
-  row(look, t.opacity, range("opacity", 0.3, 1, 0.02, (v) => Math.round(v * 100) + "%"))
-  row(look, t.radius, range("radius", 0, 34, 1, (v) => v + "px"))
-  row(look, t.fontSize, range("fontSize", 12, 18, 1, (v) => v + "px"))
-  row(look, t.font, select("font", t.fonts))
-  row(look, t.width, range("width", 560, 1000, 10, (v) => v + "px"))
-  row(look, t.height, range("height", 420, 900, 10, (v) => v + "px"))
+  row(lookRows, t.accent, swatches)
+  row(lookRows, t.opacity, range("opacity", 0.3, 1, 0.02, (v) => Math.round(v * 100) + "%"))
+  row(lookRows, t.radius, range("radius", 0, 34, 1, (v) => v + "px"))
+  row(lookRows, t.fontSize, range("fontSize", 12, 18, 1, (v) => v + "px"))
+  row(lookRows, t.font, select("font", t.fonts))
+  row(lookRows, t.width, range("width", 560, 1000, 10, (v) => v + "px"))
+  row(lookRows, t.height, range("height", 420, 900, 10, (v) => v + "px"))
 
-  const behavior = section(t.behavior)
-  const shortcut = el("button", "shortcut" + (s.shortcutOk ? "" : " bad"), prettyShortcut(s.shortcut, context.platform))
+  const behavior = group(section(t.behavior))
+  const shortcut = el("button", "shortcut" + (s.shortcutOk ? "" : " bad"))
+  showShortcut(shortcut, s.shortcut, context.platform)
   shortcut.addEventListener("click", () => {
     shortcut.classList.add("recording")
     shortcut.textContent = t.recording
@@ -146,7 +159,7 @@ export function buildSettings(container: HTMLElement, context: SettingsContext, 
       window.removeEventListener("keydown", onKey, true)
       shortcut.classList.remove("recording")
       if (value) update({ shortcut: value })
-      else shortcut.textContent = prettyShortcut(s.shortcut, context.platform)
+      else showShortcut(shortcut, s.shortcut, context.platform)
     }
     window.addEventListener("keydown", onKey, true)
   })

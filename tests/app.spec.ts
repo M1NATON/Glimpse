@@ -20,14 +20,14 @@ const savedChat = {
 }
 
 async function launch() {
-  app = await electron.launch({ args: [root, `--user-data-dir=${dataDir}`, "--glimpse-x11"] })
+  app = await electron.launch({ args: [root, `--user-data-dir=${dataDir}`, "--force-device-scale-factor=1"] })
   page = await app.firstWindow()
   await expect(page.locator("#input")).toBeVisible()
 }
 
 // A second launch is how the shortcut and the tray toggle the window.
 async function secondLaunch() {
-  const child = spawn(require("electron") as unknown as string, [root, `--user-data-dir=${dataDir}`, "--glimpse-x11"])
+  const child = spawn(require("electron") as unknown as string, [root, `--user-data-dir=${dataDir}`, "--force-device-scale-factor=1"])
   let output = ""
   child.stdout.on("data", (chunk) => (output += chunk))
   child.stderr.on("data", (chunk) => (output += chunk))
@@ -103,7 +103,7 @@ test("a broken settings file falls back to defaults", async () => {
 test("answers a real question", async () => {
   test.skip(!!process.env.CI, "Google shows a captcha to CI runners")
   await app.close()
-  const child = spawn(require("electron") as unknown as string, [root, `--user-data-dir=${dataDir}`, "--glimpse-x11", "--remote-debugging-port=9339"])
+  const child = spawn(require("electron") as unknown as string, [root, `--user-data-dir=${dataDir}`, "--force-device-scale-factor=1", "--remote-debugging-port=9339"])
   try {
     await expect.poll(() => fetch("http://127.0.0.1:9339/json/version").then((r) => r.ok, () => false)).toBe(true)
     const browser = await chromium.connectOverCDP("http://127.0.0.1:9339")

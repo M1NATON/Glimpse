@@ -1,7 +1,7 @@
 {
   "name": "glimpse",
   "productName": "Glimpse",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Google AI answers in a quick floating window, with follow-up questions.",
   "license": "MIT",
   "author": {
@@ -10,7 +10,7 @@
   },
   "main": "out/main/main.js",
   "scripts": {
-    "build": "tsc -b && node -e \"for (const f of ['index.html', 'style.css']) require('node:fs').cpSync('src/ui/' + f, 'out/ui/' + f)\"",
+    "build": "tsc -b && node scripts/assets.mjs",
     "start": "npm run build && electron .",
     "dist": "npm run build && electron-builder",
     "test": "npm run build && playwright test"
@@ -20,6 +20,7 @@
     "@types/node": "^24.19.2",
     "electron": "44.9.3",
     "electron-builder": "26.18.0",
+    "geist": "1.7.2",
     "typescript": "^7.0.2"
   },
   "build": {
@@ -29,6 +30,7 @@
       "out/**/*.js",
       "out/ui/index.html",
       "out/ui/style.css",
+      "out/ui/fonts/*",
       "build/icon.png"
     ],
     "directories": {
