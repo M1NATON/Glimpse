@@ -150,6 +150,7 @@ function buildSettings(container, state, update) {
   row(behavior, t.uiLanguage, select("uiLanguage", { auto: t.languages.auto, en: "English", ru: "Русский" }))
   row(behavior, t.language, select("language", languages))
   row(behavior, t.hideOnBlur, toggle("hideOnBlur"))
+  if (s.hideOnBlur) row(behavior, t.hideDelay, range("hideDelay", 0, 3000, 100, (v) => (v / 1000).toFixed(1) + " " + t.seconds))
   row(behavior, t.launchAtLogin, toggle("launchAtLogin"))
   row(behavior, t.saveHistory, toggle("saveHistory"))
 

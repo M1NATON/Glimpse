@@ -51,7 +51,7 @@ pass the check once and the answer continues.
 - Hyprland users can get a borderless, blurred window with:
 
   ```lua
-  o.window({ class = "^glimpse$", title = "^Glimpse$" }, { float = true, no_shadow = true, border_size = 0, rounding = 22 })
+  o.window({ class = "^glimpse$", title = "^Glimpse$" }, { float = true, no_shadow = true, border_size = 0, rounding = 20 })
   ```
 
 ## Build from source

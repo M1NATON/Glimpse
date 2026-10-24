@@ -27,6 +27,7 @@ let tray = null
 let settings = null
 let history = null
 let expanded = false
+let blurTimer = null
 let chat = null
 const google = new GoogleSession()
 
@@ -90,9 +91,16 @@ function createWindow() {
     return { action: "deny" }
   })
   win.webContents.on("will-navigate", (event) => event.preventDefault())
+  // A short delay keeps a stray click outside from snapping the window shut.
   win.on("blur", () => {
-    if (settings.get().hideOnBlur && !google.captcha && !win.webContents.isDevToolsOpened()) hide()
+    const s = settings.get()
+    if (!s.hideOnBlur || google.captcha || win.webContents.isDevToolsOpened()) return
+    clearTimeout(blurTimer)
+    blurTimer = setTimeout(() => {
+      if (!win.isFocused()) hide()
+    }, s.hideDelay)
   })
+  win.on("focus", () => clearTimeout(blurTimer))
 }
 
 // Chromium on Wayland folds GNOME's text scaling into the page scale; below the
