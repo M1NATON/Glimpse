@@ -37,12 +37,10 @@
     },
     "linux": {
       "target": [
-        "AppImage",
-        "deb"
+        "AppImage"
       ],
       "category": "Utility",
-      "icon": "build/icon.png",
-      "maintainer": "Glimpse contributors <glimpse@users.noreply.github.com>"
+      "icon": "build/icon.png"
     },
     "win": {
       "target": [

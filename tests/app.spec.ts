@@ -26,11 +26,13 @@ async function launch() {
 }
 
 // A second launch is how the shortcut and the tray toggle the window.
-function secondLaunch() {
-  return new Promise((resolve) => {
-    const child = spawn(require("electron") as unknown as string, [root, `--user-data-dir=${dataDir}`, "--glimpse-x11"])
-    child.on("exit", resolve)
-  })
+async function secondLaunch() {
+  const child = spawn(require("electron") as unknown as string, [root, `--user-data-dir=${dataDir}`, "--glimpse-x11"])
+  let output = ""
+  child.stdout.on("data", (chunk) => (output += chunk))
+  child.stderr.on("data", (chunk) => (output += chunk))
+  const code = await new Promise((resolve) => child.on("exit", resolve))
+  await expect.poll(isVisible, { message: `second launch exited with ${code}:\n${output}` }).toBe(true)
 }
 
 const isVisible = () => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find((w) => w.title === "Glimpse")!.isVisible())
@@ -68,9 +70,14 @@ test("each open from the shortcut starts a new chat", async () => {
   await page.keyboard.press("Escape")
   await expect.poll(isVisible).toBe(false)
   await secondLaunch()
-  await expect.poll(isVisible).toBe(true)
   await expect(page.locator(".message")).toHaveCount(0)
   await expect(page.locator("#card")).not.toHaveClass(/expanded/)
+})
+
+test("closing the window hides it and the shortcut brings it back", async () => {
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find((w) => w.title === "Glimpse")!.close())
+  await expect.poll(isVisible).toBe(false)
+  await secondLaunch()
 })
 
 test("settings are saved and survive a restart", async () => {

@@ -26,7 +26,7 @@ Download the installer for your system from [Releases](../../releases):
 | --- | --- |
 | Windows | `Glimpse-Setup-x.y.z.exe` |
 | macOS | `Glimpse-x.y.z.dmg` (right-click → Open the first time: the app is not notarized) |
-| Linux | `Glimpse-x.y.z.AppImage` or `glimpse_x.y.z_amd64.deb` |
+| Linux | `Glimpse-x.y.z.AppImage` (any distribution: make it executable and run) |
 
 ## Use
 

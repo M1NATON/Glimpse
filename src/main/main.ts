@@ -101,6 +101,12 @@ function createWindow() {
     }, s.hideDelay)
   })
   window.on("focus", () => clearTimeout(blurTimer))
+  // Closing from the window manager only hides it: the app lives on in the tray.
+  window.on("close", (event) => {
+    if (google.quitting) return
+    event.preventDefault()
+    hide()
+  })
 }
 
 // Chromium on Wayland folds GNOME's text scaling into the page scale; below the

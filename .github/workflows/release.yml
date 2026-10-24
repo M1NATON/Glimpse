@@ -10,10 +10,14 @@ permissions:
 
 jobs:
   build:
+    name: ${{ matrix.name }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - { name: Linux, os: ubuntu-latest }
+          - { name: Windows, os: windows-latest }
+          - { name: macOS, os: macos-latest }
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
@@ -35,9 +39,8 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: ${{ !startsWith(github.ref, 'refs/tags/') }}
         with:
-          name: glimpse-${{ matrix.os }}
+          name: glimpse-${{ matrix.name }}
           path: |
             dist/*.AppImage
-            dist/*.deb
             dist/*.exe
             dist/*.dmg
